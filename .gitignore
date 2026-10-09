@@ -1,0 +1,39 @@
+# Environment variables and secrets
+
+.env
+.env.*
+!.env.example
+
+# Go build outputs
+
+/bin/
+/build/
+*.exe
+*.test
+*.out
+
+# Local configuration
+
+.vscode/
+.idea/
+
+# OS-generated files
+
+.DS_Store
+Thumbs.db
+Desktop.ini
+
+# Logs
+
+*.log
+
+# Temporary files
+
+*.tmp
+*.swp
+
+# Local database dumps and backups
+
+*.sql.gz
+*.dump
+*.backup
