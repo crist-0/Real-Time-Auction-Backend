@@ -3,9 +3,12 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"log"
 	"net/http"
 	"os"
+	"os/signal"
+	"syscall"
 	"time"
 
 	"github.com/go-chi/chi/v5"
@@ -50,6 +53,14 @@ func main() {
 
 	defer cancel()
 
+	ctx1, stop := signal.NotifyContext(
+		context.Background(),
+		os.Interrupt,
+		syscall.SIGTERM,
+	)
+
+	defer stop()
+
 	pool, err := pgxpool.New(ctx, dbUrl)
 
 	if err != nil {
@@ -75,9 +86,39 @@ func main() {
 
 	r.Get("/health", app.HealthHandler)
 
-	err = http.ListenAndServe(":3000", r)
+	server := &http.Server{Addr: ":3000", Handler: r}
 
-	if err != nil {
-		log.Fatal("server failed : ", err)
+	serverErr := make(chan error, 1)
+
+	go func() {
+
+		err = server.ListenAndServe()
+
+		if err != nil {
+			serverErr <- err
+		}
+	}()
+
+	select {
+	case <-ctx1.Done():
+		log.Println("Shutdown signal received")
+
+		ctx, cancel := context.WithTimeout(
+			context.Background(),
+			10*time.Second)
+
+		err = server.Shutdown(ctx)
+		cancel()
+
+		if err != nil {
+			log.Println("Graceful shutdown failed: ", err)
+		} else {
+			log.Println("Server shutdown completed")
+		}
+	case er := <-serverErr:
+		if er != nil && !errors.Is(er, http.ErrServerClosed) {
+			log.Println("Server failed : ", er)
+		}
 	}
+
 }
