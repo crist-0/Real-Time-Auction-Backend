@@ -24,12 +24,31 @@ type App struct {
 	DB *pgxpool.Pool
 }
 
-func (a *App) HealthHandler(w http.ResponseWriter, r *http.Request) {
+func (a *App) LivenessHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
 	json.NewEncoder(w).Encode(Response{
-		Status: "Ok",
+		Status: "ok",
 	})
+}
+
+func (a *App) HealthHandler(w http.ResponseWriter, r *http.Request) {
+
+	err := a.DB.Ping(r.Context())
+
+	w.Header().Set("Content-Type", "application/json")
+	if err != nil {
+		w.WriteHeader(http.StatusServiceUnavailable)
+		json.NewEncoder(w).Encode(Response{
+			Status: "service unavailable",
+		})
+	} else {
+		w.WriteHeader(http.StatusOK)
+		json.NewEncoder(w).Encode(Response{
+			Status: "ok",
+		})
+	}
+
 }
 
 func main() {
@@ -85,6 +104,8 @@ func main() {
 	r := chi.NewRouter()
 
 	r.Get("/health", app.HealthHandler)
+	r.Get("/health/live", app.LivenessHandler)
+	r.Get("/health/ready", app.HealthHandler)
 
 	server := &http.Server{Addr: ":3000", Handler: r}
 
