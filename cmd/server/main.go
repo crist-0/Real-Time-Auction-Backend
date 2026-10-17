@@ -112,12 +112,7 @@ func main() {
 	serverErr := make(chan error, 1)
 
 	go func() {
-
-		err = server.ListenAndServe()
-
-		if err != nil {
-			serverErr <- err
-		}
+		serverErr <- server.ListenAndServe()
 	}()
 
 	select {
